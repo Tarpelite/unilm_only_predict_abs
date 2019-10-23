@@ -438,6 +438,7 @@ def main():
                     # loss = loss.mean()
                     masked_lm_loss = masked_lm_loss.mean()
                     next_sentence_loss = next_sentence_loss.mean()
+                    pos_loss = pos_loss.mean()
                 loss = masked_lm_loss + next_sentence_loss + pos_loss
 
                 # logging for each step (i.e., before normalization by args.gradient_accumulation_steps)
