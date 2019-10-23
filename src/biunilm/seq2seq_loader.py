@@ -185,7 +185,7 @@ class Preprocess4Seq2seq(Pipeline):
         else:
             tokens = ['[CLS]'] + tokens_a + ['[SEP]'] + tokens_b + ['[SEP]']
         
-        tokens_pos = [0] + tokens_pos_a + [0] + tokens_pos_b
+        tokens_pos = [0] + tokens_pos_a + [0] + tokens_pos_b + [0]
 
         if self.new_segment_ids:
             if self.mode == "s2s":
