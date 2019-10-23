@@ -341,7 +341,11 @@ class Preprocess4Seq2seq(Pipeline):
                     masked_pos, masked_weights, -1, self.task_idx,
                     oracle_pos, oracle_weights, oracle_labels)
         
-        assert len(input_ids) == len(tokens_pos)
+        try:
+            assert len(input_ids) == len(tokens_pos)
+        except Exception as e:
+            print("input_ids", len(input_ids))
+            print("tokens_pos", len(tokens_pos))
 
         return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids, masked_pos, masked_weights, -1, self.task_idx, tokens_pos)
 
