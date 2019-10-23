@@ -1322,7 +1322,7 @@ class BertForPreTrainingLossMask(PreTrainedBertModel):
             sequence_output = self.dropout(sequence_output)
             pos_logits = self.pos_cls(sequence_output)
             loss_fct = CrossEntropyLoss()
-            pos_loss = loss_fct(pos_logits.view(-1, self.num_labels), pos_tags.view(-1))
+            pos_loss = loss_fct(pos_logits.view(-1, self.num_labels), pos_tag.view(-1))
 
 
 
