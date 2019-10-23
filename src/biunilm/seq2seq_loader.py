@@ -168,8 +168,13 @@ class Preprocess4Seq2seq(Pipeline):
         tokens_a, tokens_b = instance[:2]
         tokens_pos_a = instance[-1]
         tokens_pos_b = [0] * len(tokens_b)
-
-        assert len(tokens_a) == len(tokens_pos_a)
+        # print("instance", len(instance))
+        try:
+            assert len(tokens_a) == len(tokens_pos_a)
+        except Exception as e:
+            print("instance", len(instance))
+            print("tokens_a", len(tokens_a))
+            print("tokens_pos_a", len(tokens_pos_a))
 
         if self.pos_shift:
             tokens_b = ['[S2S_SOS]'] + tokens_b
