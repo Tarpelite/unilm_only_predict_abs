@@ -77,7 +77,7 @@ class Seq2SeqDataset(torch.utils.data.Dataset):
         # read the file into memory
         self.ex_list = []
         if file_pos is not None:
-            print("enter pos")
+            # print("enter pos")
             with open(file_src, "r", encoding='utf-8') as f_src, open(file_tgt, "r", encoding='utf-8') as f_tgt, open(file_pos, "r", encoding='utf-8') as f_pos:
                 for src, tgt, pos in zip(f_src, f_tgt, f_pos):
                     src_tk = tokenizer.tokenize(src.strip())

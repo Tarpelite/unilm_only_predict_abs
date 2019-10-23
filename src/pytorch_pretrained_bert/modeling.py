@@ -1321,12 +1321,12 @@ class BertForPreTrainingLossMask(PreTrainedBertModel):
         if pos_tag is not None:
             sequence_output = self.dropout(sequence_output)
             pos_logits = self.pos_cls(sequence_output)
+            print("pos_logits", pos_logits.shape)
+            print("pos tag", pos_tag.shape)
+
             loss_fct = CrossEntropyLoss()
-            try:
-                pos_loss = loss_fct(pos_logits.view(-1, self.num_labels), pos_tag.view(-1))
-            except Exception as e:
-                print("pos_logits", pos_logits.shape)
-                print("pos tag", pos_tag.shape)
+            
+            pos_loss = loss_fct(pos_logits.view(-1, self.num_labels), pos_tag.view(-1))
 
 
 
@@ -1342,7 +1342,7 @@ class BertForPreTrainingLossMask(PreTrainedBertModel):
             masked_lm_loss = masked_lm_loss + masked_lm_loss_2
 
         if pair_x is None or pair_y is None or pair_r is None or pair_pos_neg_mask is None or pair_loss_mask is None:
-            return masked_lm_loss, next_sentence_loss
+            return masked_lm_loss, next_sentence_loss, pos_loss
 
         # pair and relation
         if pair_x_mask is None or pair_y_mask is None:
