@@ -1322,8 +1322,11 @@ class BertForPreTrainingLossMask(PreTrainedBertModel):
             sequence_output = self.dropout(sequence_output)
             pos_logits = self.pos_cls(sequence_output)
             loss_fct = CrossEntropyLoss()
-            pos_loss = loss_fct(pos_logits.view(-1, self.num_labels), pos_tag.view(-1))
-
+            try:
+                pos_loss = loss_fct(pos_logits.view(-1, self.num_labels), pos_tag.view(-1))
+            except Exception as e:
+                print("pos_logits", pos_logits.shape)
+                print("pos tag", pos_tag.shape)
 
 
 
