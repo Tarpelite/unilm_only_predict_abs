@@ -86,6 +86,8 @@ class Seq2SeqDataset(torch.utils.data.Dataset):
                     assert len(src_tk) > 0
                     assert len(tgt_tk) > 0
                     assert len(pos_tk) > 0
+
+                    assert len(src_tk) == len(pos_tk)
                     self.ex_list.append((src_tk, tgt_tk, pos_tk))
                     
 
