@@ -92,7 +92,7 @@ class Seq2SeqDataset(torch.utils.data.Dataset):
                     self.ex_list.append((src_tk, tgt_tk, pos_tk))
                     
 
-        if file_oracle is None:
+        elif file_oracle is None:
             with open(file_src, "r", encoding='utf-8') as f_src, open(file_tgt, "r", encoding='utf-8') as f_tgt:
                 for src, tgt in zip(f_src, f_tgt):
                     src_tk = tokenizer.tokenize(src.strip())
