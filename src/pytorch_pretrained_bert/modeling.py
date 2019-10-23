@@ -1321,8 +1321,8 @@ class BertForPreTrainingLossMask(PreTrainedBertModel):
         if pos_tag is not None:
             sequence_output = self.dropout(sequence_output)
             pos_logits = self.pos_cls(sequence_output)
-            print("pos_logits", pos_logits.shape)
-            print("pos tag", pos_tag.shape)
+            print("pos_logits", pos_logits.view(-1, self.num_labels).shape)
+            print("pos tag", pos_tag.view(-1).shape)
 
             loss_fct = CrossEntropyLoss()
             
