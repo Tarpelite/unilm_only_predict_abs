@@ -438,7 +438,7 @@ def main():
                     # loss = loss.mean()
                     masked_lm_loss = masked_lm_loss.mean()
                     next_sentence_loss = next_sentence_loss.mean()
-                loss = masked_lm_loss + next_sentence_loss + poss_loss
+                loss = masked_lm_loss + next_sentence_loss + pos_loss
 
                 # logging for each step (i.e., before normalization by args.gradient_accumulation_steps)
                 iter_bar.set_description('Iter (loss=%5.3f)' % loss.item())
