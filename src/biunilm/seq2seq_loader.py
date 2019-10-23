@@ -13,7 +13,7 @@ from biunilm.loader_utils import get_random_word, batch_list_to_batch_tensors, P
 #    so that the "next sentence prediction" task doesn't span between documents.
 
 
-def truncate_tokens_pair(tokens_a, tokens_b, max_len, max_len_a=0, max_len_b=0, trunc_seg=None, always_truncate_tail=False):
+def truncate_tokens_pair(tokens_a, tokens_b, tokens_pos_a, tokens_pos_b, max_len, max_len_a=0, max_len_b=0, trunc_seg=None, always_truncate_tail=False):
     num_truncated_a = [0, 0]
     num_truncated_b = [0, 0]
     while True:
@@ -21,32 +21,43 @@ def truncate_tokens_pair(tokens_a, tokens_b, max_len, max_len_a=0, max_len_b=0, 
             break
         if (max_len_a > 0) and len(tokens_a) > max_len_a:
             trunc_tokens = tokens_a
+            trunc_tokens_pos = tokens_pos_a
             num_truncated = num_truncated_a
+
         elif (max_len_b > 0) and len(tokens_b) > max_len_b:
             trunc_tokens = tokens_b
+            trunc_tokens_pos = tokens_pos_b
             num_truncated = num_truncated_b
+
         elif trunc_seg:
             # truncate the specified segment
             if trunc_seg == 'a':
                 trunc_tokens = tokens_a
+                trunc_tokens_pos = tokens_pos_a
                 num_truncated = num_truncated_a
             else:
                 trunc_tokens = tokens_b
+                trunc_tokens_pos = tokens_pos_b
                 num_truncated = num_truncated_b
         else:
             # truncate the longer segment
             if len(tokens_a) > len(tokens_b):
                 trunc_tokens = tokens_a
+                trunc_tokens_pos = tokens_pos_a
                 num_truncated = num_truncated_a
             else:
                 trunc_tokens = tokens_b
+                trunc_tokens_pos = tokens_pos_b
                 num_truncated = num_truncated_b
         # whether always truncate source sequences
+
         if (not always_truncate_tail) and (rand() < 0.5):
             del trunc_tokens[0]
+            del trunc_tokens_pos[0]
             num_truncated[0] += 1
         else:
             trunc_tokens.pop()
+            trunc_tokens_pos.pop()
             num_truncated[1] += 1
     return num_truncated_a, num_truncated_b
 
@@ -54,7 +65,7 @@ def truncate_tokens_pair(tokens_a, tokens_b, max_len, max_len_a=0, max_len_b=0, 
 class Seq2SeqDataset(torch.utils.data.Dataset):
     """ Load sentence pair (sequential or random order) from corpus """
 
-    def __init__(self, file_src, file_tgt, batch_size, tokenizer, max_len, file_oracle=None, short_sampling_prob=0.1, sent_reverse_order=False, bi_uni_pipeline=[]):
+    def __init__(self, file_src, file_tgt, batch_size, tokenizer, max_len, file_oracle=None, file_pos=None, short_sampling_prob=0.1, sent_reverse_order=False, bi_uni_pipeline=[]):
         super().__init__()
         self.tokenizer = tokenizer  # tokenize function
         self.max_len = max_len  # maximum length of tokens
@@ -65,6 +76,19 @@ class Seq2SeqDataset(torch.utils.data.Dataset):
 
         # read the file into memory
         self.ex_list = []
+        if file_pos is not None:
+            with open(file_src, "r", encoding='utf-8') as f_src, open(file_tgt, "r", encoding='utf-8') as f_tgt, open(file_pos, "r", encoding='utf-8') as f_pos:
+                for src, tgt, pos in zip(f_src, f_tgt, f_pos):
+                    src_tk = tokenizer.tokenize(src.strip())
+                    tgt_tk = tokenizer.tokenize(tgt.strip())
+                    pos_tk = [int(x) for x in pos.strip().split()]
+
+                    assert len(src_tk) > 0
+                    assert len(tgt_tk) > 0
+                    assert len(pos_tk) > 0
+                    self.ex_list.append((src_tk, tgt_tk, pos_tk))
+                    
+
         if file_oracle is None:
             with open(file_src, "r", encoding='utf-8') as f_src, open(file_tgt, "r", encoding='utf-8') as f_tgt:
                 for src, tgt in zip(f_src, f_tgt):
@@ -140,12 +164,14 @@ class Preprocess4Seq2seq(Pipeline):
 
     def __call__(self, instance):
         tokens_a, tokens_b = instance[:2]
+        tokens_pos_a = instance[-1]
+        tokens_pos_b = [0] * len(tokens_b)
 
         if self.pos_shift:
             tokens_b = ['[S2S_SOS]'] + tokens_b
 
         # -3  for special tokens [CLS], [SEP], [SEP]
-        num_truncated_a, _ = truncate_tokens_pair(tokens_a, tokens_b, self.max_len - 3, max_len_a=self.max_len_a,
+        num_truncated_a, _ = truncate_tokens_pair(tokens_a, tokens_b, tokens_pos_a, tokens_pos_b, self.max_len - 3, max_len_a=self.max_len_a,
                                                   max_len_b=self.max_len_b, trunc_seg=self.trunc_seg, always_truncate_tail=self.always_truncate_tail)
 
         # Add Special Tokens
@@ -154,6 +180,8 @@ class Preprocess4Seq2seq(Pipeline):
                 ['[S2S_SEP]'] + tokens_b + ['[SEP]']
         else:
             tokens = ['[CLS]'] + tokens_a + ['[SEP]'] + tokens_b + ['[SEP]']
+        
+        tokens_pos = [0] + tokens_pos_a + [0] + tokens_pos_b
 
         if self.new_segment_ids:
             if self.mode == "s2s":
@@ -258,7 +286,8 @@ class Preprocess4Seq2seq(Pipeline):
         # Zero Padding
         n_pad = self.max_len - len(input_ids)
         input_ids.extend([0]*n_pad)
-        segment_ids.extend([0]*n_pad)
+        segment_ids.extend([0] * n_pad)
+        tokens_pos.extend([0] * n_pad)
 
         if self.num_qkv > 1:
             mask_qkv = [0]*(len(tokens_a)+2) + [1] * (len(tokens_b)+1)
@@ -311,8 +340,10 @@ class Preprocess4Seq2seq(Pipeline):
             return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids,
                     masked_pos, masked_weights, -1, self.task_idx,
                     oracle_pos, oracle_weights, oracle_labels)
+        
+        assert len(input_ids) == len(tokens_pos)
 
-        return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids, masked_pos, masked_weights, -1, self.task_idx)
+        return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids, masked_pos, masked_weights, -1, self.task_idx, tokens_pos)
 
 
 class Preprocess4Seq2seqDecoder(Pipeline):

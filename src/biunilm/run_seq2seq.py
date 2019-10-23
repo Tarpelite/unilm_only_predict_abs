@@ -213,6 +213,7 @@ def main():
                         help="Sharing segment embeddings for the encoder of S2S (used with --s2s_add_segment).")
     parser.add_argument('--pos_shift', action='store_true',
                         help="Using position shift for fine-tuning.")
+    parser.add_argument('--file_pos', type=str, default=None)
 
     args = parser.parse_args()
 
@@ -281,8 +282,10 @@ def main():
             args.data_dir, args.src_file if args.src_file else 'train.src')
         fn_tgt = os.path.join(
             args.data_dir, args.tgt_file if args.tgt_file else 'train.tgt')
+        fn_pos = os.path.join(args.data_dir, args.pos_file if args.pos_file else "train.pos")
+
         train_dataset = seq2seq_loader.Seq2SeqDataset(
-            fn_src, fn_tgt, args.train_batch_size, data_tokenizer, args.max_seq_length, file_oracle=file_oracle, bi_uni_pipeline=bi_uni_pipeline)
+            fn_src, fn_tgt, args.train_batch_size, data_tokenizer, args.max_seq_length, file_oracle=file_oracle, file_pos=fn_pos, bi_uni_pipeline=bi_uni_pipeline)
         if args.local_rank == -1:
             train_sampler = RandomSampler(train_dataset, replacement=False)
             _batch_size = args.train_batch_size
@@ -426,16 +429,16 @@ def main():
                 if args.has_sentence_oracle:
                     input_ids, segment_ids, input_mask, mask_qkv, lm_label_ids, masked_pos, masked_weights, is_next, task_idx, oracle_pos, oracle_weights, oracle_labels = batch
                 else:
-                    input_ids, segment_ids, input_mask, mask_qkv, lm_label_ids, masked_pos, masked_weights, is_next, task_idx = batch
+                    input_ids, segment_ids, input_mask, mask_qkv, lm_label_ids, masked_pos, masked_weights, is_next, task_idx, tokens_pos = batch
                     oracle_pos, oracle_weights, oracle_labels = None, None, None
                 loss_tuple = model(input_ids, segment_ids, input_mask, lm_label_ids, is_next, masked_pos=masked_pos, masked_weights=masked_weights, task_idx=task_idx, masked_pos_2=oracle_pos, masked_weights_2=oracle_weights,
-                                   masked_labels_2=oracle_labels, mask_qkv=mask_qkv)
-                masked_lm_loss, next_sentence_loss = loss_tuple
+                                   masked_labels_2=oracle_labels, mask_qkv=mask_qkv, pos_tag=tokens_pos)
+                masked_lm_loss, next_sentence_loss, pos_loss = loss_tuple
                 if n_gpu > 1:    # mean() to average on multi-gpu.
                     # loss = loss.mean()
                     masked_lm_loss = masked_lm_loss.mean()
                     next_sentence_loss = next_sentence_loss.mean()
-                loss = masked_lm_loss + next_sentence_loss
+                loss = masked_lm_loss + next_sentence_loss + poss_loss
 
                 # logging for each step (i.e., before normalization by args.gradient_accumulation_steps)
                 iter_bar.set_description('Iter (loss=%5.3f)' % loss.item())

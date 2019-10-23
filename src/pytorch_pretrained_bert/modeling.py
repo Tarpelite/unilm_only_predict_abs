@@ -1181,7 +1181,7 @@ class BertPreTrainingPairRel(nn.Module):
 class BertForPreTrainingLossMask(PreTrainedBertModel):
     """refer to BertForPreTraining"""
 
-    def __init__(self, config, num_labels=2, num_rel=0, num_sentlvl_labels=0, no_nsp=False):
+    def __init__(self, config, num_labels=2, num_rel=0, num_sentlvl_labels=0, no_nsp=False, num_pos_labels=36, dropout=0.1):
         super(BertForPreTrainingLossMask, self).__init__(config)
         self.bert = BertModel(config)
         self.cls = BertPreTrainingHeads(
@@ -1208,6 +1208,11 @@ class BertForPreTrainingLossMask(PreTrainedBertModel):
                 config.label_smoothing, config.vocab_size, ignore_index=0, reduction='none')
         else:
             self.crit_mask_lm_smoothed = None
+        
+        self.num_pos_labels = num_pos_labels
+        self.pos_cls = nn.Linear(config.hidden_size, self.num_pos_labels)
+        self.dropout = nn.Dropout(dropout)
+
         self.apply(self.init_bert_weights)
         self.bert.rescale_some_parameters()
 
@@ -1215,7 +1220,7 @@ class BertForPreTrainingLossMask(PreTrainedBertModel):
                 next_sentence_label=None, masked_pos=None, masked_weights=None, task_idx=None, pair_x=None,
                 pair_x_mask=None, pair_y=None, pair_y_mask=None, pair_r=None, pair_pos_neg_mask=None,
                 pair_loss_mask=None, masked_pos_2=None, masked_weights_2=None, masked_labels_2=None,
-                num_tokens_a=None, num_tokens_b=None, mask_qkv=None):
+                num_tokens_a=None, num_tokens_b=None, mask_qkv=None, pos_tag=None):
         if token_type_ids is None and attention_mask is None:
             task_0 = (task_idx == 0)
             task_1 = (task_idx == 1)
@@ -1311,6 +1316,16 @@ class BertForPreTrainingLossMask(PreTrainedBertModel):
         else:
             next_sentence_loss = self.crit_next_sent(
                 seq_relationship_score.view(-1, self.num_labels).float(), next_sentence_label.view(-1))
+        
+        # pos-tag loss
+        if pos_tag is not None:
+            sequence_output = self.dropout(sequence_output)
+            pos_logits = self.pos_cls(sequence_output)
+            loss_fct = CrossEntropyLoss()
+            pos_loss = loss_fct(pos_logits.view(-1, self.num_labels), pos_tags.view(-1))
+
+
+
 
         if self.cls2 is not None and masked_pos_2 is not None:
             sequence_output_masked_2 = gather_seq_out_by_pos(
@@ -1341,7 +1356,7 @@ class BertForPreTrainingLossMask(PreTrainedBertModel):
             pair_x_output_masked, pair_y_output_masked, pair_r, pair_pos_neg_mask)
         pair_loss = loss_mask_and_normalize(
             pair_loss.float(), pair_loss_mask)
-        return masked_lm_loss, next_sentence_loss, pair_loss
+        return masked_lm_loss, next_sentence_loss, pair_loss, pos_loss
 
 
 class BertForExtractiveSummarization(PreTrainedBertModel):
