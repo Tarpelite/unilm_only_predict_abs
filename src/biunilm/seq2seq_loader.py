@@ -176,6 +176,7 @@ class Preprocess4Seq2seq(Pipeline):
             print("instance", len(instance))
             print("tokens_a", len(tokens_a))
             print("tokens_pos_a", len(tokens_pos_a))
+            print(instance)
 
         if self.pos_shift:
             tokens_b = ['[S2S_SOS]'] + tokens_b
