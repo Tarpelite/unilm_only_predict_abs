@@ -169,6 +169,8 @@ class Preprocess4Seq2seq(Pipeline):
         tokens_pos_a = instance[-1]
         tokens_pos_b = [0] * len(tokens_b)
 
+        assert len(tokens_a) == len(tokens_pos_a)
+
         if self.pos_shift:
             tokens_b = ['[S2S_SOS]'] + tokens_b
 
