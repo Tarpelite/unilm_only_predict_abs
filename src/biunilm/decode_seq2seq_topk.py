@@ -215,7 +215,6 @@ def main():
                         instances.append(proc(instance))
 
                 with torch.no_grad():
-                    instances = [x[:-1] for x in instances]
                     batch = seq2seq_loader.batch_list_to_batch_tensors(
                         instances)
                     batch = [
