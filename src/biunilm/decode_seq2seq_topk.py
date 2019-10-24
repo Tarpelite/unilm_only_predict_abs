@@ -290,7 +290,7 @@ def main():
         else:
             fn_out = model_recover_path + '.' + args.split
         
-        assert len(output_lines) == len(all_prekeyphrase_results)
+        # assert len(output_lines) == len(all_prekeyphrase_results)
         with open(fn_out, "w", encoding="utf-8") as fout:
             for l in (output_lines):
                 fout.write('\t'.join(l))
