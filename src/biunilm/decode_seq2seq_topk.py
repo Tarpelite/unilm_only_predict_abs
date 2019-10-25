@@ -292,7 +292,7 @@ def main():
         
         # assert len(output_lines) == len(all_prekeyphrase_results)
 
-        with open(fn_out, "w+") as fout:
+        with open(fn_out, "w+", encoding='utf-8') as fout:
             for l in (output_lines):
                 fout.write('\t'.join(l))
                 fout.write("\n")
